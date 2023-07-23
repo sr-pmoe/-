@@ -1,0 +1,55 @@
+name: Auto Api Task Pro
+
+on:
+  release:
+    types: [published]
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 */4 * * *"
+  watch:
+    types: [started]
+
+jobs:
+  Task:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+      - name: Install requests
+        run: |
+          pip install requests
+      - name: Read config from secrets
+        env:
+          CONFIG_ID: ${{ secrets.CONFIG_ID }}
+          CONFIG_KEY: ${{ secrets.CONFIG_KEY }}
+        run: |
+          cp main.py temp.py
+          echo $CONFIG_ID > configid.txt
+          echo $CONFIG_KEY > configkey.txt
+          sed -i '10 r configid.txt' temp.py
+          sed -i '12 r configkey.txt' temp.py
+      - name: Test Api
+        run: |
+          echo `date +"%Y-%m-%d %H:%M:%S"` begin > time.log
+          python temp.py
+      - name: Delete secrets config
+        run: |
+          rm -f temp.py
+          rm -f configid.txt
+          rm -f configkey.txt
+      - name: Commit
+        run: |
+          git config --global user.email sr-pmoe@mihari.uk
+          git config --global user.name sr-pmoe
+          git add .
+          git commit -m "update new refresh_token" -a
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GH_TOKEN }}
